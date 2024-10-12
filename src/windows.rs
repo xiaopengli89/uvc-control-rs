@@ -1,6 +1,7 @@
 use crate::Error;
 use std::{ptr, mem};
 use windows::core::{Interface, PWSTR, HSTRING};
+use windows::Devices::Enumeration;
 use windows::Media::{Capture, Devices};
 use windows::Win32::Media::{KernelStreaming, MediaFoundation};
 use windows::Win32::System::Com;
@@ -83,6 +84,11 @@ impl DeviceInfo {
         let topology_info: KernelStreaming::IKsTopologyInfo = source.cast()?;
         let num_nodes = unsafe { topology_info.NumNodes() }?;
         let ks_control: KernelStreaming::IKsControl = source.cast()?;
+
+        let infos = Enumeration::DeviceInformation::FindAllAsyncDeviceClass(Enumeration::DeviceClass::VideoCapture)?.get()?;
+        for i in 0..infos.Size()? {
+            let info = infos.GetAt(i)?;
+        }
 
         let mc = Capture::MediaCapture::new()?;
         let settings = Capture::MediaCaptureInitializationSettings::new()?;
