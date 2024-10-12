@@ -1,0 +1,18 @@
+[package]
+name = "uvc-control-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nusb = "0.1.10"
+thiserror = "1.0.64"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58.0", features = [
+    "Win32_System_Com",
+    "Win32_Media_KernelStreaming",
+    "Win32_Media_MediaFoundation",
+    "Media_Capture",
+    "Media_Devices",
+] }
+regex = "1.11.0"
