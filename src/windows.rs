@@ -29,8 +29,8 @@ impl DeviceInfo {
         let mut count = 0;
         unsafe { MediaFoundation::MFEnumDeviceSources(&attr, &mut list, &mut count) }?;
 
-        let re_pid = regex::Regex::new("pid_(\\d+)").unwrap();
-        let re_vid = regex::Regex::new("vid_(\\d+)").unwrap();
+        let re_pid = regex::Regex::new("pid_([A-Fa-f0-9]+)").unwrap();
+        let re_vid = regex::Regex::new("vid_([A-Fa-f0-9]+)").unwrap();
 
         let mut device_infos = Vec::with_capacity(count as _);
 
@@ -51,8 +51,12 @@ impl DeviceInfo {
                 continue;
             };
 
-            let product_id = re_pid.captures(&id).and_then(|caps| caps.get(1)).and_then(|m| m.as_str().parse::<u16>().ok()).unwrap_or_default();
-            let vendor_id = re_vid.captures(&id).and_then(|caps| caps.get(1)).and_then(|m| m.as_str().parse::<u16>().ok()).unwrap_or_default();
+            let product_id = re_pid.captures(&id).and_then(|caps| caps.get(1)).and_then(|m| {
+                u16::from_str_radix(m.as_str(), 16).ok()
+            }).unwrap_or_default();
+            let vendor_id = re_vid.captures(&id).and_then(|caps| caps.get(1)).and_then(|m| {
+                u16::from_str_radix(m.as_str(), 16).ok()
+            }).unwrap_or_default();
 
             device_infos.push(Self { inner, id, product_id, vendor_id });
         }
