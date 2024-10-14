@@ -1,7 +1,6 @@
 use crate::{Caps, Error, RelOperation};
 use std::{mem, ptr};
 use windows::core::{Interface, HSTRING, PWSTR};
-use windows::Media::{Capture, Devices};
 use windows::Win32::Media::{DirectShow, KernelStreaming, MediaFoundation};
 use windows::Win32::System::Com;
 
@@ -107,22 +106,10 @@ impl DeviceInfo {
         let ks_control: KernelStreaming::IKsControl = source.cast()?;
         let am_control: DirectShow::IAMCameraControl = source.cast()?;
 
-        let mc = Capture::MediaCapture::new()?;
-        let settings = Capture::MediaCaptureInitializationSettings::new()?;
-        settings.SetVideoDeviceId(&HSTRING::from(&self.id))?;
-        mc.InitializeWithSettingsAsync(&settings)?.get()?;
-
-        let controller = mc.VideoDeviceController()?;
-
         Ok(Device {
             num_nodes,
             ks_control,
             am_control,
-            zoom: controller.Zoom()?,
-            pan: controller.Pan()?,
-            tilt: controller.Tilt()?,
-            _controller: controller,
-            _mc: mc,
         })
     }
 }
@@ -131,11 +118,6 @@ pub struct Device {
     num_nodes: u32,
     ks_control: KernelStreaming::IKsControl,
     am_control: DirectShow::IAMCameraControl,
-    zoom: Devices::MediaDeviceControl,
-    pan: Devices::MediaDeviceControl,
-    tilt: Devices::MediaDeviceControl,
-    _controller: Devices::VideoDeviceController,
-    _mc: Capture::MediaCapture,
 }
 
 impl Device {
@@ -164,16 +146,28 @@ impl Device {
         })
     }
 
-    pub fn zoom_caps(&self) -> Result<Caps, Error> {
+    pub fn zoom_abs_caps(&self) -> Result<Caps, Error> {
         self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM)
     }
 
-    pub fn pan_caps(&self) -> Result<Caps, Error> {
+    pub fn zoom_rel_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM_RELATIVE)
+    }
+
+    pub fn pan_abs_caps(&self) -> Result<Caps, Error> {
         self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN)
     }
 
-    pub fn tilt_caps(&self) -> Result<Caps, Error> {
+    pub fn pan_rel_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE)
+    }
+
+    pub fn tilt_abs_caps(&self) -> Result<Caps, Error> {
         self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT)
+    }
+
+    pub fn tilt_rel_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE)
     }
 
     pub fn zoom_abs(&self, value: i32) -> Result<(), Error> {

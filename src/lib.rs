@@ -10,12 +10,14 @@ pub enum Error {
     Win(#[from] ::windows::core::Error),
 }
 
+#[derive(Debug)]
 pub enum RelOperation {
     Passitive,
     Negative,
     Stop,
 }
 
+#[derive(Debug)]
 pub struct Caps {
     pub min: i32,
     pub max: i32,
@@ -26,7 +28,7 @@ pub struct Caps {
 
 pub fn foo() {
     let devices = nusb::list_devices().unwrap();
-    for info in devices {
+    for _info in devices {
         // info.interfaces();
         // let dev = info.open().unwrap();
         // let inf = dev.claim_interface(0).unwrap();
