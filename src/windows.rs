@@ -194,7 +194,7 @@ impl Device {
         }?)
     }
 
-    pub fn pan_absolute(&self, value: i32) -> Result<(), Error> {
+    pub fn pan_abs(&self, value: i32) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN.0,
@@ -204,7 +204,7 @@ impl Device {
         }?)
     }
 
-    pub fn pan_relative(&self, operation: RelOperation) -> Result<(), Error> {
+    pub fn pan_rel(&self, operation: RelOperation) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE.0,
@@ -218,7 +218,7 @@ impl Device {
         }?)
     }
 
-    pub fn tilt_absolute(&self, value: i32) -> Result<(), Error> {
+    pub fn tilt_abs(&self, value: i32) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT.0,
@@ -228,7 +228,7 @@ impl Device {
         }?)
     }
 
-    pub fn tilt_relative(&self, operation: RelOperation) -> Result<(), Error> {
+    pub fn tilt_rel(&self, operation: RelOperation) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE.0,
