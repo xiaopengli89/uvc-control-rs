@@ -1,5 +1,5 @@
 #[cfg(windows)]
-pub use windows::{DeviceInfo, Device};
+pub use windows::{Device, DeviceInfo};
 
 #[cfg(windows)]
 mod windows;
