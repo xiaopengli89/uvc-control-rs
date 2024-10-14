@@ -1,8 +1,8 @@
-use crate::Error;
+use crate::{Caps, Error, RelOperation};
 use std::{mem, ptr};
 use windows::core::{Interface, HSTRING, PWSTR};
 use windows::Media::{Capture, Devices};
-use windows::Win32::Media::{KernelStreaming, MediaFoundation};
+use windows::Win32::Media::{DirectShow, KernelStreaming, MediaFoundation};
 use windows::Win32::System::Com;
 
 pub struct DeviceInfo {
@@ -105,6 +105,7 @@ impl DeviceInfo {
         let topology_info: KernelStreaming::IKsTopologyInfo = source.cast()?;
         let num_nodes = unsafe { topology_info.NumNodes() }?;
         let ks_control: KernelStreaming::IKsControl = source.cast()?;
+        let am_control: DirectShow::IAMCameraControl = source.cast()?;
 
         let mc = Capture::MediaCapture::new()?;
         let settings = Capture::MediaCaptureInitializationSettings::new()?;
@@ -116,6 +117,7 @@ impl DeviceInfo {
         Ok(Device {
             num_nodes,
             ks_control,
+            am_control,
             zoom: controller.Zoom()?,
             pan: controller.Pan()?,
             tilt: controller.Tilt()?,
@@ -128,6 +130,7 @@ impl DeviceInfo {
 pub struct Device {
     num_nodes: u32,
     ks_control: KernelStreaming::IKsControl,
+    am_control: DirectShow::IAMCameraControl,
     zoom: Devices::MediaDeviceControl,
     pan: Devices::MediaDeviceControl,
     tilt: Devices::MediaDeviceControl,
@@ -136,56 +139,117 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn zoom_caps(&self) -> Result<[f64; 3], Error> {
-        let cap = self.zoom.Capabilities()?;
-        Ok([cap.Step()?, cap.Min()?, cap.Max()?])
+    fn caps(
+        &self,
+        control: KernelStreaming::KSPROPERTY_VIDCAP_CAMERACONTROL,
+    ) -> Result<Caps, Error> {
+        let mut min = 0;
+        let mut max = 0;
+        let mut step = 0;
+        let mut def = 0;
+        let mut flags = 0;
+        unsafe {
+            self.am_control.GetRange(
+                control.0, &mut min, &mut max, &mut step, &mut def, &mut flags,
+            )
+        }?;
+        let mut cur = 0;
+        unsafe { self.am_control.Get(control.0, &mut cur, &mut flags) }?;
+        Ok(Caps {
+            min,
+            max,
+            step,
+            def,
+            cur,
+        })
     }
 
-    pub fn zoom_get(&self) -> Result<f64, Error> {
-        let mut v = 0.;
-        self.zoom.TryGetValue(&mut v)?;
-        Ok(v)
+    pub fn zoom_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM)
     }
 
-    pub fn zoom_set(&self, v: f64) -> Result<(), Error> {
-        self.zoom.TrySetValue(v)?;
-        Ok(())
+    pub fn pan_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN)
     }
 
-    pub fn pan_caps(&self) -> Result<[f64; 3], Error> {
-        let cap = self.pan.Capabilities()?;
-        Ok([cap.Step()?, cap.Min()?, cap.Max()?])
+    pub fn tilt_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT)
     }
 
-    pub fn pan_get(&self) -> Result<f64, Error> {
-        let mut v = 0.;
-        self.pan.TryGetValue(&mut v)?;
-        Ok(v)
+    pub fn zoom_abs(&self, value: i32) -> Result<(), Error> {
+        Ok(unsafe {
+            self.am_control.Set(
+                KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM.0,
+                value,
+                DirectShow::CameraControl_Flags_Manual.0,
+            )
+        }?)
     }
 
-    pub fn pan_set(&self, v: f64) -> Result<(), Error> {
-        self.pan.TrySetValue(v)?;
-        Ok(())
+    pub fn zoom_rel(&self, operation: RelOperation) -> Result<(), Error> {
+        Ok(unsafe {
+            self.am_control.Set(
+                KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM_RELATIVE.0,
+                match operation {
+                    RelOperation::Passitive => 1,
+                    RelOperation::Negative => -1,
+                    RelOperation::Stop => 0,
+                },
+                DirectShow::CameraControl_Flags_Manual.0,
+            )
+        }?)
     }
 
-    pub fn tilt_caps(&self) -> Result<[f64; 3], Error> {
-        let cap = self.tilt.Capabilities()?;
-        Ok([cap.Step()?, cap.Min()?, cap.Max()?])
+    pub fn pan_absolute(&self, value: i32) -> Result<(), Error> {
+        Ok(unsafe {
+            self.am_control.Set(
+                KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN.0,
+                value,
+                DirectShow::CameraControl_Flags_Manual.0,
+            )
+        }?)
     }
 
-    pub fn tilt_get(&self) -> Result<f64, Error> {
-        let mut v = 0.;
-        self.tilt.TryGetValue(&mut v)?;
-        Ok(v)
+    pub fn pan_relative(&self, operation: RelOperation) -> Result<(), Error> {
+        Ok(unsafe {
+            self.am_control.Set(
+                KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE.0,
+                match operation {
+                    RelOperation::Passitive => 1,
+                    RelOperation::Negative => -1,
+                    RelOperation::Stop => 0,
+                },
+                DirectShow::CameraControl_Flags_Manual.0,
+            )
+        }?)
     }
 
-    pub fn tilt_set(&self, v: f64) -> Result<(), Error> {
-        self.tilt.TrySetValue(v)?;
-        Ok(())
+    pub fn tilt_absolute(&self, value: i32) -> Result<(), Error> {
+        Ok(unsafe {
+            self.am_control.Set(
+                KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT.0,
+                value,
+                DirectShow::CameraControl_Flags_Manual.0,
+            )
+        }?)
+    }
+
+    pub fn tilt_relative(&self, operation: RelOperation) -> Result<(), Error> {
+        Ok(unsafe {
+            self.am_control.Set(
+                KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE.0,
+                match operation {
+                    RelOperation::Passitive => 1,
+                    RelOperation::Negative => -1,
+                    RelOperation::Stop => 0,
+                },
+                DirectShow::CameraControl_Flags_Manual.0,
+            )
+        }?)
     }
 
     // {a8bd5df2-1a98-474e-8dd0-d92672d194fa}, 2, [2]
-    pub fn set_auto_focus(&self, set: &str, id: u32, data: &[u8]) -> Result<(), Error> {
+    pub fn set_xu(&self, set: &str, id: u32, data: &[u8]) -> Result<(), Error> {
         for node_id in 0..self.num_nodes {
             let mut property = KernelStreaming::KSP_NODE::default();
             property.Property.Anonymous.Anonymous.Set =
