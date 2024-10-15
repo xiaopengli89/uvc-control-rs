@@ -87,10 +87,6 @@ impl DeviceInfo {
         Ok(device_infos)
     }
 
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-
     pub fn product_id(&self) -> u16 {
         self.product_id
     }
@@ -146,31 +142,31 @@ impl Device {
         })
     }
 
-    pub fn zoom_abs_caps(&self) -> Result<Caps, Error> {
+    pub fn zoom_abs_caps(&self, _unit: u8) -> Result<Caps, Error> {
         self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM)
     }
 
-    pub fn zoom_rel_caps(&self) -> Result<Caps, Error> {
+    pub fn zoom_rel_caps(&self, _unit: u8) -> Result<Caps, Error> {
         self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM_RELATIVE)
     }
 
-    pub fn pan_abs_caps(&self) -> Result<Caps, Error> {
+    pub fn pan_abs_caps(&self, _unit: u8) -> Result<Caps, Error> {
         self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN)
     }
 
-    pub fn pan_rel_caps(&self) -> Result<Caps, Error> {
+    pub fn pan_rel_caps(&self, _unit: u8) -> Result<Caps, Error> {
         self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE)
     }
 
-    pub fn tilt_abs_caps(&self) -> Result<Caps, Error> {
+    pub fn tilt_abs_caps(&self, _unit: u8) -> Result<Caps, Error> {
         self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT)
     }
 
-    pub fn tilt_rel_caps(&self) -> Result<Caps, Error> {
+    pub fn tilt_rel_caps(&self, _unit: u8) -> Result<Caps, Error> {
         self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE)
     }
 
-    pub fn zoom_abs(&self, value: i32) -> Result<(), Error> {
+    pub fn zoom_abs(&self, value: i32, _unit: u8) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM.0,
@@ -180,7 +176,7 @@ impl Device {
         }?)
     }
 
-    pub fn zoom_rel(&self, operation: RelOperation) -> Result<(), Error> {
+    pub fn zoom_rel(&self, operation: RelOperation, _unit: u8) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM_RELATIVE.0,
@@ -194,7 +190,7 @@ impl Device {
         }?)
     }
 
-    pub fn pan_abs(&self, value: i32) -> Result<(), Error> {
+    pub fn pan_abs(&self, value: i32, _unit: u8) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN.0,
@@ -204,7 +200,7 @@ impl Device {
         }?)
     }
 
-    pub fn pan_rel(&self, operation: RelOperation) -> Result<(), Error> {
+    pub fn pan_rel(&self, operation: RelOperation, _unit: u8) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE.0,
@@ -218,7 +214,7 @@ impl Device {
         }?)
     }
 
-    pub fn tilt_abs(&self, value: i32) -> Result<(), Error> {
+    pub fn tilt_abs(&self, value: i32, _unit: u8) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT.0,
@@ -228,7 +224,7 @@ impl Device {
         }?)
     }
 
-    pub fn tilt_rel(&self, operation: RelOperation) -> Result<(), Error> {
+    pub fn tilt_rel(&self, operation: RelOperation, _unit: u8) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
                 KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE.0,
