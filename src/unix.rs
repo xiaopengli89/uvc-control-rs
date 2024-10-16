@@ -155,7 +155,7 @@ impl Device {
 
     pub fn zoom_rel_set(&self, value: i32) -> Result<(), Error> {
         let caps = self.zoom_rel_caps()?;
-        let data = [value as u8, 1, caps.res as u8];
+        let data = [value as u8, 0, caps.res as u8];
         self.set(Control::ZoomRel as _, self.it_unit, &data)
     }
 
