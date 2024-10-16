@@ -1,7 +1,7 @@
-#[cfg(windows)]
-pub use windows::{Device, DeviceInfo};
 #[cfg(unix)]
 pub use unix::{Device, DeviceInfo};
+#[cfg(windows)]
+pub use windows::{Device, DeviceInfo};
 
 #[cfg(unix)]
 mod unix;
@@ -25,17 +25,9 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub enum RelOperation {
-    Passitive,
-    Negative,
-    Stop,
-}
-
-#[derive(Debug)]
 pub struct Caps {
     pub min: i32,
     pub max: i32,
-    pub step: i32,
+    pub res: i32,
     pub def: i32,
-    pub cur: i32,
 }
