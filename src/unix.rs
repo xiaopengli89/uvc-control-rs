@@ -9,7 +9,16 @@ pub struct DeviceInfo {
 impl DeviceInfo {
     pub fn enumerate() -> Result<Vec<Self>, Error> {
         Ok(nusb::list_devices()?
-            .map(|inner| DeviceInfo { inner })
+            .filter_map(|inner| {
+                if inner
+                    .interfaces()
+                    .any(|inf| inf.class() == UsbClass::Video as _)
+                {
+                    Some(DeviceInfo { inner })
+                } else {
+                    None
+                }
+            })
             .collect())
     }
 
