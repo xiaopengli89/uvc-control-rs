@@ -1,12 +1,12 @@
-use crate::{Caps, Error, RelOperation};
+use crate::{Caps, Error};
 use std::{mem, ptr};
-use windows::core::{Interface, HSTRING, PWSTR};
+use windows::core::{Interface, GUID, HSTRING, PWSTR};
 use windows::Win32::Media::{DirectShow, KernelStreaming, MediaFoundation};
 use windows::Win32::System::Com;
 
 pub struct DeviceInfo {
     inner: MediaFoundation::IMFActivate,
-    id: String,
+    product_string: Option<String>,
     product_id: u16,
     vendor_id: u16,
 }
@@ -41,25 +41,22 @@ impl DeviceInfo {
         for i in 0..count as usize {
             let inner = unsafe { ptr::read(list.add(i)) }.unwrap();
 
-            let mut symbolic_link = PWSTR::null();
-            let mut len = 0;
-            if unsafe {
-                inner.GetAllocatedString(
-                    &MediaFoundation::MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK,
-                    &mut symbolic_link,
-                    &mut len,
-                )
-            }
-            .is_err()
-            {
-                continue;
-            }
+            let get_string = |guid: &GUID| {
+                let mut ws = PWSTR::null();
+                let mut len = 0;
+                if unsafe { inner.GetAllocatedString(guid, &mut ws, &mut len) }.is_err() {
+                    return None;
+                }
 
-            let id = unsafe { symbolic_link.to_string() };
+                let s = unsafe { ws.to_string() };
+                unsafe { Com::CoTaskMemFree(Some(ws.as_ptr() as _)) };
+                s.ok()
+            };
 
-            unsafe { Com::CoTaskMemFree(Some(symbolic_link.as_ptr() as _)) };
-
-            let Ok(id) = id else {
+            let id = get_string(
+                &MediaFoundation::MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK,
+            );
+            let Some(id) = id else {
                 continue;
             };
 
@@ -74,9 +71,11 @@ impl DeviceInfo {
                 .and_then(|m| u16::from_str_radix(m.as_str(), 16).ok())
                 .unwrap_or_default();
 
+            let product_string = get_string(&MediaFoundation::MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME);
+
             device_infos.push(Self {
                 inner,
-                id,
+                product_string,
                 product_id,
                 vendor_id,
             });
@@ -85,6 +84,10 @@ impl DeviceInfo {
         unsafe { Com::CoTaskMemFree(Some(list as _)) };
 
         Ok(device_infos)
+    }
+
+    pub fn product_string(&self) -> Option<&str> {
+        self.product_string.as_deref()
     }
 
     pub fn product_id(&self) -> u16 {
@@ -117,122 +120,37 @@ pub struct Device {
 }
 
 impl Device {
-    fn caps(
-        &self,
-        control: KernelStreaming::KSPROPERTY_VIDCAP_CAMERACONTROL,
-    ) -> Result<Caps, Error> {
+    pub fn caps(&self, control_code: i32) -> Result<Caps, Error> {
         let mut min = 0;
         let mut max = 0;
-        let mut step = 0;
+        let mut res = 0;
         let mut def = 0;
         let mut flags = 0;
         unsafe {
             self.am_control.GetRange(
-                control.0, &mut min, &mut max, &mut step, &mut def, &mut flags,
+                control_code,
+                &mut min,
+                &mut max,
+                &mut res,
+                &mut def,
+                &mut flags,
             )
         }?;
+        Ok(Caps { min, max, res, def })
+    }
+
+    pub fn get(&self, control_code: i32) -> Result<i32, Error> {
         let mut cur = 0;
-        unsafe { self.am_control.Get(control.0, &mut cur, &mut flags) }?;
-        Ok(Caps {
-            min,
-            max,
-            step,
-            def,
-            cur,
-        })
+        let mut flags = 0;
+        unsafe { self.am_control.Get(control_code, &mut cur, &mut flags) }?;
+        Ok(cur)
     }
 
-    pub fn zoom_abs_caps(&self, _unit: u8) -> Result<Caps, Error> {
-        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM)
-    }
-
-    pub fn zoom_rel_caps(&self, _unit: u8) -> Result<Caps, Error> {
-        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM_RELATIVE)
-    }
-
-    pub fn pan_abs_caps(&self, _unit: u8) -> Result<Caps, Error> {
-        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN)
-    }
-
-    pub fn pan_rel_caps(&self, _unit: u8) -> Result<Caps, Error> {
-        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE)
-    }
-
-    pub fn tilt_abs_caps(&self, _unit: u8) -> Result<Caps, Error> {
-        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT)
-    }
-
-    pub fn tilt_rel_caps(&self, _unit: u8) -> Result<Caps, Error> {
-        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE)
-    }
-
-    pub fn zoom_abs(&self, value: i32, _unit: u8) -> Result<(), Error> {
+    pub fn set(&self, control_code: i32, value: i32) -> Result<(), Error> {
         Ok(unsafe {
             self.am_control.Set(
-                KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM.0,
+                control_code,
                 value,
-                DirectShow::CameraControl_Flags_Manual.0,
-            )
-        }?)
-    }
-
-    pub fn zoom_rel(&self, operation: RelOperation, _unit: u8) -> Result<(), Error> {
-        Ok(unsafe {
-            self.am_control.Set(
-                KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM_RELATIVE.0,
-                match operation {
-                    RelOperation::Passitive => 1,
-                    RelOperation::Negative => -1,
-                    RelOperation::Stop => 0,
-                },
-                DirectShow::CameraControl_Flags_Manual.0,
-            )
-        }?)
-    }
-
-    pub fn pan_abs(&self, value: i32, _unit: u8) -> Result<(), Error> {
-        Ok(unsafe {
-            self.am_control.Set(
-                KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN.0,
-                value,
-                DirectShow::CameraControl_Flags_Manual.0,
-            )
-        }?)
-    }
-
-    pub fn pan_rel(&self, operation: RelOperation, _unit: u8) -> Result<(), Error> {
-        Ok(unsafe {
-            self.am_control.Set(
-                KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE.0,
-                match operation {
-                    RelOperation::Passitive => 1,
-                    RelOperation::Negative => -1,
-                    RelOperation::Stop => 0,
-                },
-                DirectShow::CameraControl_Flags_Manual.0,
-            )
-        }?)
-    }
-
-    pub fn tilt_abs(&self, value: i32, _unit: u8) -> Result<(), Error> {
-        Ok(unsafe {
-            self.am_control.Set(
-                KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT.0,
-                value,
-                DirectShow::CameraControl_Flags_Manual.0,
-            )
-        }?)
-    }
-
-    pub fn tilt_rel(&self, operation: RelOperation, _unit: u8) -> Result<(), Error> {
-        Ok(unsafe {
-            self.am_control.Set(
-                KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE.0,
-                match operation {
-                    RelOperation::Passitive => 1,
-                    RelOperation::Negative => -1,
-                    RelOperation::Stop => 0,
-                },
                 DirectShow::CameraControl_Flags_Manual.0,
             )
         }?)
@@ -240,13 +158,14 @@ impl Device {
 
     // {a8bd5df2-1a98-474e-8dd0-d92672d194fa}, 2, [2]
     pub fn set_xu(&self, set: &str, id: u32, data: &[u8]) -> Result<(), Error> {
+        let mut property = KernelStreaming::KSP_NODE::default();
+        property.Property.Anonymous.Anonymous.Set =
+            unsafe { Com::CLSIDFromString(&HSTRING::from(set)) }?;
+        property.Property.Anonymous.Anonymous.Id = id;
+        property.Property.Anonymous.Anonymous.Flags =
+            KernelStreaming::KSPROPERTY_TYPE_SET | KernelStreaming::KSPROPERTY_TYPE_TOPOLOGY;
+
         for node_id in 0..self.num_nodes {
-            let mut property = KernelStreaming::KSP_NODE::default();
-            property.Property.Anonymous.Anonymous.Set =
-                unsafe { Com::CLSIDFromString(&HSTRING::from(set)) }?;
-            property.Property.Anonymous.Anonymous.Id = id;
-            property.Property.Anonymous.Anonymous.Flags =
-                KernelStreaming::KSPROPERTY_TYPE_SET | KernelStreaming::KSPROPERTY_TYPE_TOPOLOGY;
             property.NodeId = node_id;
 
             let mut r = 0;
@@ -266,5 +185,86 @@ impl Device {
         }
 
         Ok(())
+    }
+
+    pub fn zoom_abs_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM.0)
+    }
+
+    pub fn zoom_abs(&self) -> Result<i32, Error> {
+        self.get(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM.0)
+    }
+
+    pub fn zoom_abs_set(&self, value: i32) -> Result<(), Error> {
+        self.set(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM.0, value)
+    }
+
+    pub fn zoom_rel_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM_RELATIVE.0)
+    }
+
+    pub fn zoom_rel(&self) -> Result<i32, Error> {
+        self.get(KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM_RELATIVE.0)
+    }
+
+    pub fn zoom_rel_set(&self, value: i32) -> Result<(), Error> {
+        self.set(
+            KernelStreaming::KSPROPERTY_CAMERACONTROL_ZOOM_RELATIVE.0,
+            value,
+        )
+    }
+
+    pub fn pan_abs_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN.0)
+    }
+
+    pub fn pan_abs(&self) -> Result<i32, Error> {
+        self.get(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN.0)
+    }
+
+    pub fn pan_abs_set(&self, value: i32) -> Result<(), Error> {
+        self.set(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN.0, value)
+    }
+
+    pub fn pan_rel_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE.0)
+    }
+
+    pub fn pan_rel(&self) -> Result<i32, Error> {
+        self.get(KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE.0)
+    }
+
+    pub fn pan_rel_set(&self, value: i32) -> Result<(), Error> {
+        self.set(
+            KernelStreaming::KSPROPERTY_CAMERACONTROL_PAN_RELATIVE.0,
+            value,
+        )
+    }
+
+    pub fn tilt_abs_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT.0)
+    }
+
+    pub fn tilt_abs(&self) -> Result<i32, Error> {
+        self.get(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT.0)
+    }
+
+    pub fn tilt_abs_set(&self, value: i32) -> Result<(), Error> {
+        self.set(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT.0, value)
+    }
+
+    pub fn tilt_rel_caps(&self) -> Result<Caps, Error> {
+        self.caps(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE.0)
+    }
+
+    pub fn tilt_rel(&self) -> Result<i32, Error> {
+        self.get(KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE.0)
+    }
+
+    pub fn tilt_rel_set(&self, value: i32) -> Result<(), Error> {
+        self.set(
+            KernelStreaming::KSPROPERTY_CAMERACONTROL_TILT_RELATIVE.0,
+            value,
+        )
     }
 }
