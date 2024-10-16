@@ -157,7 +157,7 @@ impl Device {
     }
 
     // {a8bd5df2-1a98-474e-8dd0-d92672d194fa}, 2, [2]
-    pub fn set_xu(&self, set: &str, id: u32, data: &[u8]) -> Result<(), Error> {
+    pub fn set_xu(&self, set: &str, id: u32, data: &mut [u8]) -> Result<(), Error> {
         let mut property = KernelStreaming::KSP_NODE::default();
         property.Property.Anonymous.Anonymous.Set =
             unsafe { Com::CLSIDFromString(&HSTRING::from(set)) }?;
@@ -173,7 +173,7 @@ impl Device {
                 self.ks_control.KsProperty(
                     &property.Property,
                     mem::size_of_val(&property) as _,
-                    data.as_ptr() as *const _ as _,
+                    data.as_mut_ptr() as _,
                     mem::size_of_val(data) as _,
                     &mut r,
                 )
