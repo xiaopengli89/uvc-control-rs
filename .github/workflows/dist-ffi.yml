@@ -1,4 +1,6 @@
 name: dist ffi
+permissions:
+  contents: write
 
 on:
   workflow_dispatch:
