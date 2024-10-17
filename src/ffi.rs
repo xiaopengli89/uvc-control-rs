@@ -70,6 +70,11 @@ pub unsafe extern "C" fn uvc_control_enumerate(p_list: *mut DeviceInfoList) -> E
 }
 
 #[no_mangle]
+pub extern "C" fn uvc_control_info_list_drop(list: DeviceInfoList) {
+    let _ = list;
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn uvc_control_info_list_len(list: &DeviceInfoList) -> usize {
     list.len()
 }
@@ -95,6 +100,11 @@ pub unsafe extern "C" fn uvc_control_info_open(
     };
     ptr::write(p_device, device.into());
     ERROR_CODE_SUCCESS
+}
+
+#[no_mangle]
+pub extern "C" fn uvc_control_device_drop(device: Device) {
+    let _ = device;
 }
 
 // Zoom Abs

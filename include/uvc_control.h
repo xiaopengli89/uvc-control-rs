@@ -22,6 +22,8 @@ extern "C" {
 
 ErrorCode uvc_control_enumerate(DeviceInfoList *p_list);
 
+void uvc_control_info_list_drop(DeviceInfoList list);
+
 uintptr_t uvc_control_info_list_len(const DeviceInfoList *list);
 
 uint16_t uvc_control_info_product_id(const DeviceInfoList *list, uintptr_t index);
@@ -29,6 +31,8 @@ uint16_t uvc_control_info_product_id(const DeviceInfoList *list, uintptr_t index
 uint16_t uvc_control_info_vendor_id(const DeviceInfoList *list, uintptr_t index);
 
 ErrorCode uvc_control_info_open(const DeviceInfoList *list, uintptr_t index, Device *p_device);
+
+void uvc_control_device_drop(Device device);
 
 ErrorCode uvc_control_device_zoom_abs_caps(const Device *device,
                                            int32_t *min,
