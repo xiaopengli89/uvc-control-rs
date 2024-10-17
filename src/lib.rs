@@ -3,6 +3,8 @@ pub use unix::{Device, DeviceInfo};
 #[cfg(windows)]
 pub use windows::{Device, DeviceInfo};
 
+#[cfg(feature = "ffi")]
+pub mod ffi;
 #[cfg(unix)]
 mod unix;
 #[cfg(windows)]
