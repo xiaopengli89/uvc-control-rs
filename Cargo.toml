@@ -28,3 +28,11 @@ regex = "1.11.0"
 
 [build-dependencies]
 cbindgen = "0.24.5"
+
+[profile.release]
+panic = "abort"
+lto = true
+debug = true
+split-debuginfo = "packed"
+# strip = "debuginfo"
+rpath = true
