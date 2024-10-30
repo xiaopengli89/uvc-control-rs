@@ -94,6 +94,12 @@ ErrorCode uvc_control_device_tilt_rel(const Device *device, int32_t *cur);
 
 ErrorCode uvc_control_device_tilt_rel_set(const Device *device, int32_t value);
 
+ErrorCode uvc_control_device_unix_get(const Device *device,
+                                      uint8_t control_code,
+                                      uint8_t unit,
+                                      uint8_t *data_ptr,
+                                      uintptr_t data_len);
+
 ErrorCode uvc_control_device_unix_set(const Device *device,
                                       uint8_t control_code,
                                       uint8_t unit,
@@ -101,6 +107,12 @@ ErrorCode uvc_control_device_unix_set(const Device *device,
                                       uintptr_t data_len);
 
 ErrorCode uvc_control_device_win_set(const Device *device, int32_t control_code, int32_t value);
+
+ErrorCode uv_control_device_win_get_xu(const Device *device,
+                                       const char *set,
+                                       uint32_t id,
+                                       uint8_t *data_ptr,
+                                       uintptr_t data_len);
 
 ErrorCode uvc_control_device_win_set_xu(const Device *device,
                                         const char *set,

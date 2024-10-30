@@ -156,6 +156,38 @@ impl Device {
         }?)
     }
 
+    pub fn get_xu<const C: usize>(&self, set: &str, id: u32) -> Result<[u8; C], Error> {
+        let mut data = [0u8; C];
+
+        let mut property = KernelStreaming::KSP_NODE::default();
+        property.Property.Anonymous.Anonymous.Set =
+            unsafe { Com::CLSIDFromString(&HSTRING::from(set)) }?;
+        property.Property.Anonymous.Anonymous.Id = id;
+        property.Property.Anonymous.Anonymous.Flags =
+            KernelStreaming::KSPROPERTY_TYPE_GET | KernelStreaming::KSPROPERTY_TYPE_TOPOLOGY;
+
+        for node_id in 0..self.num_nodes {
+            property.NodeId = node_id;
+
+            let mut r = 0;
+            if unsafe {
+                self.ks_control.KsProperty(
+                    &property.Property,
+                    mem::size_of_val(&property) as _,
+                    data.as_mut_ptr() as _,
+                    mem::size_of_val(&data) as _,
+                    &mut r,
+                )
+            }
+            .is_ok()
+            {
+                break;
+            };
+        }
+
+        Ok(data)
+    }
+
     // {a8bd5df2-1a98-474e-8dd0-d92672d194fa}, 2, [2]
     pub fn set_xu(&self, set: &str, id: u32, data: &mut [u8]) -> Result<(), Error> {
         let mut property = KernelStreaming::KSP_NODE::default();

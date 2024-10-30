@@ -325,6 +325,28 @@ pub unsafe extern "C" fn uvc_control_device_tilt_rel_set(device: &Device, value:
 
 #[allow(unused_mut, unused_variables)]
 #[no_mangle]
+pub unsafe extern "C" fn uvc_control_device_unix_get(
+    device: &Device,
+    control_code: u8,
+    unit: u8,
+    data_ptr: *mut u8,
+    data_len: usize,
+) -> ErrorCode {
+    let mut r = ERROR_CODE_UNKNOWN;
+
+    #[cfg(unix)]
+    {
+        if let Ok(r_data) = device.get::<32>(crate::unix::Request::GetCur, control_code, unit) {
+            ptr::copy(r_data.as_ptr(), data_ptr, r_data.len().min(data_len));
+            r = ERROR_CODE_SUCCESS;
+        }
+    }
+
+    r
+}
+
+#[allow(unused_mut, unused_variables)]
+#[no_mangle]
 pub unsafe extern "C" fn uvc_control_device_unix_set(
     device: &Device,
     control_code: u8,
@@ -357,6 +379,28 @@ pub unsafe extern "C" fn uvc_control_device_win_set(
     #[cfg(windows)]
     if device.set(control_code, value).is_ok() {
         r = ERROR_CODE_SUCCESS;
+    }
+
+    r
+}
+
+#[allow(unused_mut, unused_variables)]
+#[no_mangle]
+pub unsafe extern "C" fn uv_control_device_win_get_xu(
+    device: &Device,
+    set: *const c_char,
+    id: u32,
+    data_ptr: *mut u8,
+    data_len: usize,
+) -> ErrorCode {
+    let mut r = ERROR_CODE_UNKNOWN;
+
+    #[cfg(windows)]
+    if let Ok(set) = std::ffi::CStr::from_ptr(set).to_str() {
+        if let Ok(r_data) = device.get_xu::<32>(set, id) {
+            ptr::copy(r_data.as_ptr(), data_ptr, r_data.len().min(data_len));
+            r = ERROR_CODE_SUCCESS;
+        }
     }
 
     r
