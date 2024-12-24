@@ -11,6 +11,10 @@ pub struct DeviceInfo {
     vendor_id: u16,
 }
 
+unsafe impl Send for DeviceInfo {}
+
+unsafe impl Sync for DeviceInfo {}
+
 impl DeviceInfo {
     pub fn enumerate() -> Result<Vec<Self>, Error> {
         let mut apt_type = Com::APTTYPE::default();
@@ -118,6 +122,10 @@ pub struct Device {
     ks_control: KernelStreaming::IKsControl,
     am_control: DirectShow::IAMCameraControl,
 }
+
+unsafe impl Send for Device {}
+
+unsafe impl Sync for Device {}
 
 impl Device {
     pub fn caps(&self, control_code: i32) -> Result<Caps, Error> {
