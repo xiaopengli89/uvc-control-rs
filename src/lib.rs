@@ -6,7 +6,7 @@ pub use windows::{Device, DeviceInfo};
 #[cfg(feature = "ffi")]
 pub mod ffi;
 #[cfg(unix)]
-mod unix;
+pub mod unix;
 #[cfg(windows)]
 mod windows;
 
