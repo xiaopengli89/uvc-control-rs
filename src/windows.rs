@@ -104,6 +104,10 @@ impl DeviceInfo {
         self.vendor_id
     }
 
+    pub fn symbolic_link(&self) -> &str {
+        &self.symbolic_link
+    }
+
     pub fn open(&self) -> Result<Device, Error> {
         let source: MediaFoundation::IMFMediaSource = unsafe { self.inner.ActivateObject() }?;
         let topology_info: KernelStreaming::IKsTopologyInfo = source.cast()?;
