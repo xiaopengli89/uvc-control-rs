@@ -34,6 +34,10 @@ impl DeviceInfo {
         self.inner.vendor_id()
     }
 
+    pub fn location_id(&self) -> u32 {
+        self.inner.location_id()
+    }
+
     pub fn open(&self) -> Result<Device, Error> {
         let inner = self.inner.open()?;
         let Some(inf) = inner

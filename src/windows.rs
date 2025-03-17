@@ -9,6 +9,7 @@ pub struct DeviceInfo {
     product_string: Option<String>,
     product_id: u16,
     vendor_id: u16,
+    symbolic_link: String,
 }
 
 unsafe impl Send for DeviceInfo {}
@@ -82,6 +83,7 @@ impl DeviceInfo {
                 product_string,
                 product_id,
                 vendor_id,
+                symbolic_link: id,
             });
         }
 
