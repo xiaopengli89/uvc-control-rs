@@ -110,49 +110,6 @@ impl DeviceInfo {
         &self.symbolic_link
     }
 
-    pub fn get_descriptor(
-        &self,
-        h: Foundation::HANDLE,
-        connection_index: u32,
-    ) -> Result<(), Error> {
-        let req = Usb::USB_DESCRIPTOR_REQUEST {
-            ConnectionIndex: connection_index,
-            SetupPacket: Usb::USB_DESCRIPTOR_REQUEST_0 {
-                bmRequest: 0x80, // Standard, IN
-                bRequest: 6,     // GET_DESCRIPTOR
-                wValue: (Usb::USB_CONFIGURATION_DESCRIPTOR_TYPE as u16) << 8,
-                wIndex: 0,
-                wLength: 4 << 10, // 4KB
-            },
-            Data: [0],
-        };
-        let mut buffer = vec![0u8; mem::size_of_val(&req) + req.SetupPacket.wLength as usize];
-        unsafe {
-            ptr::copy_nonoverlapping(<*const _>::cast(&req), &mut buffer, mem::size_of_val(&req))
-        };
-
-        let mut bytes_returned = 0;
-        unsafe {
-            IO::DeviceIoControl(
-                h,
-                Usb::IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION,
-                Some(<*const _>::cast(&buffer)),
-                buffer.len() as _,
-                Some(<*mut _>::cast(&mut buffer)),
-                buffer.len() as _,
-                Some(&mut bytes_returned),
-                None,
-            )
-        }?;
-
-        let offset = 12;
-        let data = &buffer[offset..offset + bytes_returned as usize];
-
-        // parse
-
-        Ok(())
-    }
-
     pub fn open(&self) -> Result<Device, Error> {
         let source: MediaFoundation::IMFMediaSource = unsafe { self.inner.ActivateObject() }?;
         let topology_info: KernelStreaming::IKsTopologyInfo = source.cast()?;
@@ -358,4 +315,47 @@ impl Device {
             value,
         )
     }
+}
+
+pub fn get_descriptor(h_hub: Foundation::HANDLE, connection_index: u32) -> Result<(), Error> {
+    let req = Usb::USB_DESCRIPTOR_REQUEST {
+        ConnectionIndex: connection_index,
+        SetupPacket: Usb::USB_DESCRIPTOR_REQUEST_0 {
+            bmRequest: 0x80, // Standard, IN
+            bRequest: 6,     // GET_DESCRIPTOR
+            wValue: (Usb::USB_CONFIGURATION_DESCRIPTOR_TYPE as u16) << 8,
+            wIndex: 0,
+            wLength: 4 << 10, // 4KB
+        },
+        Data: [0],
+    };
+    let mut buffer = vec![0u8; mem::size_of_val(&req) + req.SetupPacket.wLength as usize];
+    unsafe {
+        ptr::copy_nonoverlapping(
+            <*const _>::cast(&req),
+            buffer.as_mut_ptr(),
+            mem::size_of_val(&req),
+        )
+    };
+
+    let mut bytes_returned = 0;
+    unsafe {
+        IO::DeviceIoControl(
+            h_hub,
+            Usb::IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION,
+            Some(buffer.as_ptr().cast()),
+            buffer.len() as _,
+            Some(buffer.as_mut_ptr().cast()),
+            buffer.len() as _,
+            Some(&mut bytes_returned),
+            None,
+        )
+    }?;
+
+    let offset = 12;
+    let data = &buffer[offset..offset + bytes_returned as usize];
+
+    // parse
+
+    Ok(())
 }
