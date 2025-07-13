@@ -24,6 +24,9 @@ pub enum Error {
     #[cfg(windows)]
     #[error("{0}")]
     Win(#[from] ::windows::core::Error),
+    #[cfg(windows)]
+    #[error("{0}")]
+    Io(#[from] std::io::Error),
 }
 
 #[derive(Debug)]
