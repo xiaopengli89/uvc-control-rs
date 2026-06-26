@@ -2,6 +2,8 @@
 name = "uvc-control"
 version = "0.1.1"
 edition = "2021"
+description = "Simple UVC control interface"
+license = "Apache-2.0 OR MIT"
 
 [lib]
 crate-type = ["lib", "staticlib", "cdylib"]
